@@ -27,14 +27,19 @@ jobs:
       PROJECT_PATH: Starmine.xcodeproj
       TARGET_NAME: Starmine macOS
       CONFIGURATION: Release
-      DERIVED_DATA_PATH: ${{ runner.temp }}/starmine-derived-data
-      SOURCE_PACKAGES_PATH: ${{ runner.temp }}/starmine-source-packages
-      PACKAGE_CACHE_PATH: ${{ runner.temp }}/starmine-package-cache
-      DIST_DIR: ${{ github.workspace }}/dist
+      DERIVED_DATA_PATH: build/derived-data
+      SOURCE_PACKAGES_PATH: build/source-packages
+      PACKAGE_CACHE_PATH: build/package-cache
+      DIST_DIR: dist
       APP_NAME: Starmine macOS.app
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Prepare build directories
+        shell: bash
+        run: |
+          mkdir -p "$DERIVED_DATA_PATH" "$SOURCE_PACKAGES_PATH" "$PACKAGE_CACHE_PATH" "$DIST_DIR"
 
       - name: Resolve package dependencies
         shell: bash
