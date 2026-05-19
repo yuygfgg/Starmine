@@ -1,0 +1,115 @@
+name: macOS Prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Optional release tag name. Leave empty to auto-generate.
+        required: false
+        type: string
+      release_name:
+        description: Optional release title. Leave empty to auto-generate.
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: macos-prerelease-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      PROJECT_PATH: Starmine.xcodeproj
+      TARGET_NAME: Starmine macOS
+      CONFIGURATION: Release
+      DERIVED_DATA_PATH: ${{ runner.temp }}/starmine-derived-data
+      SOURCE_PACKAGES_PATH: ${{ runner.temp }}/starmine-source-packages
+      PACKAGE_CACHE_PATH: ${{ runner.temp }}/starmine-package-cache
+      DIST_DIR: ${{ github.workspace }}/dist
+      APP_NAME: Starmine macOS.app
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Resolve package dependencies
+        shell: bash
+        run: |
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -resolvePackageDependencies \
+            -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_PATH" \
+            -packageCachePath "$PACKAGE_CACHE_PATH"
+
+      - name: Build release app
+        shell: bash
+        run: |
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -target "$TARGET_NAME" \
+            -configuration "$CONFIGURATION" \
+            -sdk macosx \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_PATH" \
+            -packageCachePath "$PACKAGE_CACHE_PATH" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            build
+
+      - name: Prepare release metadata
+        id: meta
+        shell: bash
+        run: |
+          TAG_NAME="${{ inputs.tag_name }}"
+          if [[ -z "$TAG_NAME" ]]; then
+            TAG_NAME="starmine-macos-prerelease-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+          fi
+
+          RELEASE_NAME="${{ inputs.release_name }}"
+          if [[ -z "$RELEASE_NAME" ]]; then
+            RELEASE_NAME="Starmine macOS prerelease (${GITHUB_SHA::7})"
+          fi
+
+          ZIP_NAME="Starmine-macos-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}.zip"
+          APP_PATH="$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION/$APP_NAME"
+          ZIP_PATH="$DIST_DIR/$ZIP_NAME"
+          SHA_PATH="$ZIP_PATH.sha256"
+
+          {
+            echo "tag_name=$TAG_NAME"
+            echo "release_name=$RELEASE_NAME"
+            echo "app_path=$APP_PATH"
+            echo "zip_path=$ZIP_PATH"
+            echo "sha_path=$SHA_PATH"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Sign and package app
+        shell: bash
+        run: |
+          mkdir -p "$DIST_DIR"
+          test -d "${{ steps.meta.outputs.app_path }}"
+          codesign --force --deep --sign - "${{ steps.meta.outputs.app_path }}"
+          codesign --verify --deep --strict --verbose=2 "${{ steps.meta.outputs.app_path }}"
+          ditto -c -k --sequesterRsrc --keepParent "${{ steps.meta.outputs.app_path }}" "${{ steps.meta.outputs.zip_path }}"
+          shasum -a 256 "${{ steps.meta.outputs.zip_path }}" > "${{ steps.meta.outputs.sha_path }}"
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          name: ${{ steps.meta.outputs.release_name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body: |
+            Automated prerelease built from `${{ github.sha }}` on `${{ github.ref_name }}`.
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.meta.outputs.zip_path }}
+            ${{ steps.meta.outputs.sha_path }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
