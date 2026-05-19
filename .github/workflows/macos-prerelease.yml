@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 90
     env:
       PROJECT_PATH: Starmine.xcodeproj
-      TARGET_NAME: Starmine macOS
+      SCHEME_NAME: Starmine macOS
       CONFIGURATION: Release
       DERIVED_DATA_PATH: build/derived-data
       SOURCE_PACKAGES_PATH: build/source-packages
@@ -67,7 +67,7 @@ jobs:
         run: |
           xcodebuild \
             -project "$PROJECT_PATH" \
-            -target "$TARGET_NAME" \
+            -scheme "$SCHEME_NAME" \
             -configuration "$CONFIGURATION" \
             -sdk macosx \
             -derivedDataPath "$DERIVED_DATA_ABS" \
