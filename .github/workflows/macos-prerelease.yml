@@ -39,7 +39,19 @@ jobs:
       - name: Prepare build directories
         shell: bash
         run: |
-          mkdir -p "$DERIVED_DATA_PATH" "$SOURCE_PACKAGES_PATH" "$PACKAGE_CACHE_PATH" "$DIST_DIR"
+          DERIVED_DATA_ABS="$GITHUB_WORKSPACE/$DERIVED_DATA_PATH"
+          SOURCE_PACKAGES_ABS="$GITHUB_WORKSPACE/$SOURCE_PACKAGES_PATH"
+          PACKAGE_CACHE_ABS="$GITHUB_WORKSPACE/$PACKAGE_CACHE_PATH"
+          DIST_ABS="$GITHUB_WORKSPACE/$DIST_DIR"
+
+          mkdir -p "$DERIVED_DATA_ABS" "$SOURCE_PACKAGES_ABS" "$PACKAGE_CACHE_ABS" "$DIST_ABS"
+
+          {
+            echo "DERIVED_DATA_ABS=$DERIVED_DATA_ABS"
+            echo "SOURCE_PACKAGES_ABS=$SOURCE_PACKAGES_ABS"
+            echo "PACKAGE_CACHE_ABS=$PACKAGE_CACHE_ABS"
+            echo "DIST_ABS=$DIST_ABS"
+          } >> "$GITHUB_ENV"
 
       - name: Resolve package dependencies
         shell: bash
@@ -47,8 +59,8 @@ jobs:
           xcodebuild \
             -project "$PROJECT_PATH" \
             -resolvePackageDependencies \
-            -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_PATH" \
-            -packageCachePath "$PACKAGE_CACHE_PATH"
+            -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_ABS" \
+            -packageCachePath "$PACKAGE_CACHE_ABS"
 
       - name: Build release app
         shell: bash
@@ -58,9 +70,9 @@ jobs:
             -target "$TARGET_NAME" \
             -configuration "$CONFIGURATION" \
             -sdk macosx \
-            -derivedDataPath "$DERIVED_DATA_PATH" \
-            -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_PATH" \
-            -packageCachePath "$PACKAGE_CACHE_PATH" \
+            -derivedDataPath "$DERIVED_DATA_ABS" \
+            -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_ABS" \
+            -packageCachePath "$PACKAGE_CACHE_ABS" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=- \
@@ -81,8 +93,8 @@ jobs:
           fi
 
           ZIP_NAME="Starmine-macos-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}.zip"
-          APP_PATH="$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION/$APP_NAME"
-          ZIP_PATH="$DIST_DIR/$ZIP_NAME"
+          APP_PATH="$DERIVED_DATA_ABS/Build/Products/$CONFIGURATION/$APP_NAME"
+          ZIP_PATH="$DIST_ABS/$ZIP_NAME"
           SHA_PATH="$ZIP_PATH.sha256"
 
           {
@@ -96,7 +108,7 @@ jobs:
       - name: Sign and package app
         shell: bash
         run: |
-          mkdir -p "$DIST_DIR"
+          mkdir -p "$DIST_ABS"
           test -d "${{ steps.meta.outputs.app_path }}"
           codesign --force --deep --sign - "${{ steps.meta.outputs.app_path }}"
           codesign --verify --deep --strict --verbose=2 "${{ steps.meta.outputs.app_path }}"
