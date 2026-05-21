@@ -20,6 +20,7 @@ import SwiftUI
 
     struct PlaybackShortcutMonitor: NSViewRepresentable {
         let onTogglePause: () -> Void
+        let onToggleDanmaku: () -> Void
         let onCaptureScreenshot: () -> Void
         let onToggleFullscreen: () -> Void
         let onSeekBackward: () -> Void
@@ -29,6 +30,7 @@ import SwiftUI
         func makeNSView(context: Context) -> PlaybackShortcutMonitorView {
             let view = PlaybackShortcutMonitorView()
             view.onTogglePause = onTogglePause
+            view.onToggleDanmaku = onToggleDanmaku
             view.onCaptureScreenshot = onCaptureScreenshot
             view.onToggleFullscreen = onToggleFullscreen
             view.onSeekBackward = onSeekBackward
@@ -42,6 +44,7 @@ import SwiftUI
             context: Context
         ) {
             nsView.onTogglePause = onTogglePause
+            nsView.onToggleDanmaku = onToggleDanmaku
             nsView.onCaptureScreenshot = onCaptureScreenshot
             nsView.onToggleFullscreen = onToggleFullscreen
             nsView.onSeekBackward = onSeekBackward
@@ -52,6 +55,7 @@ import SwiftUI
 
     final class PlaybackShortcutMonitorView: NSView {
         var onTogglePause: (() -> Void)?
+        var onToggleDanmaku: (() -> Void)?
         var onCaptureScreenshot: (() -> Void)?
         var onToggleFullscreen: (() -> Void)?
         var onSeekBackward: (() -> Void)?
@@ -126,6 +130,9 @@ import SwiftUI
             switch event.charactersIgnoringModifiers?.lowercased() {
             case " ":
                 onTogglePause?()
+                return nil
+            case "d":
+                onToggleDanmaku?()
                 return nil
             case "s":
                 onCaptureScreenshot?()

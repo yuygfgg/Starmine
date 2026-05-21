@@ -307,6 +307,11 @@ struct RootView: View {
                             guard hasActivePlayback else { return }
                             coordinator.togglePause()
                         },
+                        onToggleDanmaku: {
+                            guard hasActivePlayback else { return }
+                            notePlaybackInteraction()
+                            playback.danmakuEnabled.toggle()
+                        },
                         onCaptureScreenshot: {
                             guard hasActivePlayback else { return }
                             captureScreenshotAction()
